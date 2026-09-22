@@ -85,16 +85,21 @@ body { overflow: hidden; }
 
 .brand { display: flex; align-items: center; gap: 11px; padding: 0 10px 22px; }
 
+/* The launcher icon, in miniature: one wedge per bucket, cut to the same
+   32/22/6/40 split. Gaps come from hard conic stops onto the nav colour. */
 .brand-mark {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(160deg, var(--accent), var(--violet));
-  display: flex; align-items: flex-end; justify-content: center;
-  gap: 3px; padding-bottom: 9px;
+  width: 34px; height: 34px; border-radius: 50%;
+  position: relative; flex: 0 0 34px;
+  background: conic-gradient(
+    var(--blue)   0.6%  30.4%, transparent 30.4% 32.6%,
+    var(--accent) 32.6% 52.4%, transparent 52.4% 54.6%,
+    var(--violet) 54.6% 58.4%, transparent 58.4% 60.6%,
+    var(--cerise) 60.6% 99.4%, transparent 99.4% 100%);
 }
-.brand-mark i { width: 4px; background: #fff; border-radius: 2px; display: block; }
-.brand-mark i:nth-child(1) { height: 7px; }
-.brand-mark i:nth-child(2) { height: 11px; }
-.brand-mark i:nth-child(3) { height: 15px; }
+.brand-mark::after {
+  content: ""; position: absolute; inset: 9px;
+  border-radius: 50%; background: var(--surface);
+}
 
 .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
 .brand-text strong { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
