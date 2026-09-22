@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paycheck Planner</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div class="shell">
+
+  <nav class="nav" id="nav">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="brand-text">
+        <strong>Paycheck</strong>
+        <span>Planner</span>
+      </div>
+    </div>
+    <button class="nav-item is-active" data-view="check"><span class="ni">◆</span>This check</button>
+    <button class="nav-item" data-view="bills"><span class="ni">▤</span>Bills</button>
+    <button class="nav-item" data-view="schedule"><span class="ni">▦</span>Schedule</button>
+    <button class="nav-item" data-view="savings"><span class="ni">▲</span>Savings</button>
+    <button class="nav-item" data-view="settings"><span class="ni">✷</span>Setup</button>
+    <div class="nav-foot">
+      <button class="ghost sm" id="themeBtn">Light mode</button>
+    </div>
+  </nav>
+
+  <main class="main" id="main">
+
+    <!-- ══════════════ THIS CHECK ══════════════ -->
+    <section class="view is-active" data-view="check">
+      <header class="vh">
+        <div>
+          <h1>This check</h1>
+          <p class="sub" id="checkSub">—</p>
+        </div>
+        <div class="countdown" id="countdown"></div>
+      </header>
+
+      <div class="hero">
+        <div class="hero-label">Safe to spend</div>
+        <div class="hero-value" id="heroSpend">$0</div>
+        <div class="hero-note" id="heroNote">—</div>
+        <div class="hero-bar" id="heroBar"></div>
+        <div class="hero-legend" id="heroLegend"></div>
+      </div>
+
+      <div class="grid cards" id="buckets"></div>
+
+      <div class="grid two">
+        <div class="card">
+          <div class="card-h">
+            <h2>Due before your next check</h2>
+            <span class="pill" id="dueTotal">$0</span>
+          </div>
+          <div id="dueList" class="list"></div>
+          <div class="card-f" id="dueVerdict"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h2>Weekly pace</h2></div>
+          <div id="pace" class="pace"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ BILLS ══════════════ -->
+    <section class="view" data-view="bills">
+      <header class="vh">
+        <div>
+          <h1>Bills</h1>
+          <p class="sub">What goes out every month, and what it costs per check.</p>
+        </div>
+        <button class="btn" id="addBill">+ Add bill</button>
+      </header>
+
+      <div class="grid cards" id="billStats"></div>
+
+      <div class="card">
+        <div class="card-h"><h2>Monthly bills</h2><span class="pill" id="billCount"></span></div>
+        <div class="table-wrap">
+          <table class="tbl" id="billTable">
+            <thead>
+              <tr><th>Bill</th><th class="num">Amount</th><th class="num">Due</th><th class="num">Per check</th><th></th></tr>
+            </thead>
+            <tbody id="billBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Recurring by the week</h2><button class="ghost sm" id="addWeekly">+ Add</button></div>
+        <div class="table-wrap">
+          <table class="tbl" id="weeklyTable">
+            <thead>
+              <tr><th>Item</th><th class="num">Per week</th><th class="num">Per month</th><th class="num">Per check</th><th></th></tr>
+            </thead>
+            <tbody id="weeklyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════ SCHEDULE ══════════════ -->
+    <section class="view" data-view="schedule">
+      <header class="vh">
+        <div>
+          <h1>Schedule</h1>
+          <p class="sub">Every payday, what it has to cover, and what's left.</p>
+        </div>
+      </header>
+      <div class="card">
+        <div class="table-wrap">
+          <table class="tbl" id="schedTable">
+            <thead>
+              <tr><th>Payday</th><th>Covers until</th><th class="num">Bills due</th><th class="num">Set aside</th><th class="num">To savings</th><th class="num">Left to spend</th></tr>
+            </thead>
+            <tbody id="schedBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="note" id="bonusNote"></div>
+    </section>
+
+    <!-- ══════════════ SAVINGS ══════════════ -->
+    <section class="view" data-view="savings">
+      <header class="vh">
+        <div>
+          <h1>Savings</h1>
+          <p class="sub">Where you are, and when you get there.</p>
+        </div>
+        <button class="btn" id="addDeposit">+ Log deposit</button>
+      </header>
+
+      <div class="grid two">
+        <div class="card">
+          <div class="card-h"><h2>Emergency fund</h2></div>
+          <div class="goal">
+            <div class="goal-now" id="goalNow">$0</div>
+            <div class="goal-of">of <span id="goalTarget">$0</span></div>
+            <div class="track"><div class="track-fill" id="goalFill"></div></div>
+            <div class="goal-meta" id="goalMeta"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h2>On this plan</h2></div>
+          <div id="projection" class="proj"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Deposit log</h2><span class="pill" id="depCount"></span></div>
+        <div id="depList" class="list"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════ SETUP ══════════════ -->
+    <section class="view" data-view="settings">
+      <header class="vh">
+        <div>
+          <h1>Setup</h1>
+          <p class="sub">Your pay, your split, your backup.</p>
+        </div>
+      </header>
+
+      <div class="grid two">
+        <div class="card">
+          <div class="card-h"><h2>Pay</h2></div>
+          <div class="fields">
+            <label class="fld">
+              <span>Take-home per check</span>
+              <input type="number" inputmode="decimal" step="0.01" id="setIncome">
+            </label>
+            <label class="fld">
+              <span>A payday you know</span>
+              <input type="date" id="setAnchor">
+            </label>
+            <label class="fld">
+              <span>Paid every</span>
+              <select id="setPeriod">
+                <option value="7">week</option>
+                <option value="14">2 weeks</option>
+                <option value="15">twice a month (1st &amp; 15th)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h2>The split</h2></div>
+          <div class="fields">
+            <label class="fld">
+              <span>Bills set-aside per check</span>
+              <div class="withaux">
+                <input type="number" inputmode="decimal" step="1" id="setBills">
+                <button class="ghost sm" id="autoBills" title="Match it to what your bills actually cost">Auto</button>
+              </div>
+            </label>
+            <label class="fld">
+              <span>Savings per check</span>
+              <input type="number" inputmode="decimal" step="1" id="setSavings">
+            </label>
+            <label class="fld">
+              <span>Buffer per check <em>(car, repairs, gifts)</em></span>
+              <input type="number" inputmode="decimal" step="1" id="setBuffer">
+            </label>
+            <label class="fld">
+              <span>Emergency fund goal</span>
+              <input type="number" inputmode="decimal" step="1" id="setGoal">
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Backup</h2></div>
+        <p class="muted sm-p">Everything lives on this tablet only. Copy this text somewhere safe, and paste it back to restore.</p>
+        <textarea id="backup" class="backup" spellcheck="false"></textarea>
+        <div class="row-btns">
+          <button class="ghost" id="copyBackup">Copy</button>
+          <button class="ghost" id="restoreBackup">Restore from box</button>
+          <button class="ghost danger" id="resetAll">Reset everything</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ══════════════ EDITOR SHEET ══════════════ -->
+<div class="scrim" id="scrim" hidden>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <h3 id="sheetTitle">Edit</h3>
+    <div class="fields" id="sheetFields"></div>
+    <div class="row-btns end">
+      <button class="ghost" id="sheetCancel">Cancel</button>
+      <button class="btn" id="sheetSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
