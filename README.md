@@ -13,8 +13,8 @@ No account, no network, no permissions. Everything is stored on the tablet.
 
 | | |
 |---|---|
-| ![Schedule](docs/tablet-schedule.png) | ![Bills](docs/tablet-bills.png) |
-| ![Savings](docs/tablet-savings.png) | ![Portrait](docs/portrait-check.png) |
+| ![Savings](docs/tablet-savings.png) | ![Setup](docs/tablet-setup.png) |
+| ![Schedule](docs/tablet-schedule.png) | ![Dark](docs/dark-check.png) |
 
 ## Install it
 
@@ -30,14 +30,23 @@ you this did not come from the Play Store.
 
 ## How it works
 
-Each paycheck is split into four buckets:
+Tap **I got paid**, enter what actually landed, and every number on every
+screen recalculates.
 
-| Bucket | Default | What it is |
+Each paycheck splits into four buckets:
+
+| Bucket | On a $1,000 check | What it is |
 |---|---|---|
-| Bills | $320 | Set aside for rent, insurance, phone, gym, gas |
-| Savings | $220 | Straight to the emergency fund |
-| Buffer | $60 | Car repairs, registration, doctor, gifts |
+| Bills | $320 | Rent, insurance, phone, gym, gas |
+| Savings | $220 — 22% | Straight to the emergency fund |
+| Buffer | $60 — 6% | Car repairs, registration, doctor, gifts |
 | Spend | $400 | Groceries and everything else — $200/week |
+
+Bills are an obligation, so they do not shrink when a check does. Savings and
+buffer are a share of whatever arrived, and spend takes the remainder — so a
+$1,200 check leaves $544 to spend, and a thin one squeezes the shares rather
+than under-funding the bills. Prefer flat dollar amounts? Flip the switch in
+Setup and the two buckets stop moving.
 
 The **Schedule** tab walks forward through every payday and shows what is due
 before the next one arrives, so the months where rent and insurance land in the

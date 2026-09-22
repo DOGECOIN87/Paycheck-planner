@@ -11,20 +11,28 @@
 
   function defaults() {
     return {
-      version: 1,
+      version: 2,
       pay: { perCheck: 1000, anchor: '2026-09-24', period: 14 },
       bills: [
-        { id: 'b1', name: 'Rent',            amount: 150.99, dueDay: 1,  color: 'accent' },
-        { id: 'b2', name: 'Car insurance',   amount: 124.99, dueDay: 5,  color: 'blue'   },
-        { id: 'b3', name: 'AT&T',            amount: 146.99, dueDay: 8,  color: 'violet' },
-        { id: 'b4', name: 'Planet Fitness',  amount:  27.11, dueDay: 17, color: 'cerise'  }
+        { id: 'b1', name: 'Rent',           amount: 150.99, dueDay: 1,  color: 'accent' },
+        { id: 'b2', name: 'Car insurance',  amount: 124.99, dueDay: 5,  color: 'blue'   },
+        { id: 'b3', name: 'AT&T',           amount: 146.99, dueDay: 8,  color: 'violet' },
+        { id: 'b4', name: 'Planet Fitness', amount:  27.11, dueDay: 17, color: 'cerise' }
       ],
       weekly: [
         { id: 'w1', name: 'Gas', amount: 40 }
       ],
-      split: { bills: 320, savings: 220, buffer: 60 },
+      // 'scaled' makes savings and buffer a share of whatever actually lands,
+      // so a bigger or smaller check adjusts everything on its own.
+      split: {
+        mode: 'scaled',
+        bills: 320,
+        savings: 220, buffer: 60,        // used when mode === 'fixed'
+        savingsPct: 22, bufferPct: 6     // used when mode === 'scaled'
+      },
       savings: { balance: 0, goal: 4300, log: [] },
-      ui: { theme: 'dark' }
+      paychecks: [],
+      ui: { theme: 'light' }
     };
   }
 
@@ -36,15 +44,15 @@
       if (!raw) return defaults();
       var o = JSON.parse(raw);
       var d = defaults();
-      // shallow-merge so a partial/older blob still boots
       return {
-        version: 1,
-        pay:     Object.assign(d.pay, o.pay || {}),
-        bills:   Array.isArray(o.bills)  ? o.bills  : d.bills,
-        weekly:  Array.isArray(o.weekly) ? o.weekly : d.weekly,
-        split:   Object.assign(d.split, o.split || {}),
-        savings: Object.assign(d.savings, o.savings || {}),
-        ui:      Object.assign(d.ui, o.ui || {})
+        version: 2,
+        pay:       Object.assign(d.pay, o.pay || {}),
+        bills:     Array.isArray(o.bills)     ? o.bills     : d.bills,
+        weekly:    Array.isArray(o.weekly)    ? o.weekly    : d.weekly,
+        split:     Object.assign(d.split, o.split || {}),
+        savings:   Object.assign(d.savings, o.savings || {}),
+        paychecks: Array.isArray(o.paychecks) ? o.paychecks : d.paychecks,
+        ui:        Object.assign(d.ui, o.ui || {})
       };
     } catch (e) {
       return defaults();
@@ -116,8 +124,8 @@
 
   /* ── payday engine ─────────────────────────────────────── */
 
-  // Returns `count` payday day-numbers, starting with the most recent one
-  // that is on or before `from`.
+  // `count` payday day-numbers, starting with the most recent one on or
+  // before `from`.
   function paydays(from, count) {
     var out = [];
     var p = S.pay.period;
@@ -125,7 +133,6 @@
     if (p === 15) {                       // twice a month: 1st & 15th
       var d = fromDay(from);
       var y = d.getFullYear(), m = d.getMonth();
-      // step back one month so we reliably catch the "most recent"
       var probe = [];
       for (var k = -1; k < count + 2; k++) {
         var mm = m + k, yy = y + Math.floor(mm / 12);
@@ -172,18 +179,39 @@
   function monthlyFixed() {
     return S.bills.reduce(function (t, b) { return t + num(b.amount); }, 0);
   }
-  function checksPerMonth() {
-    return S.pay.period === 15 ? 2 : (365.25 / S.pay.period) / 12;
-  }
+  function checksPerYear() { return S.pay.period === 15 ? 24 : Math.round(365.25 / S.pay.period); }
   function weeklyPerCheck() {
-    // semi-monthly checks cover half an average month, not a fixed day count
     return S.pay.period === 15
       ? weeklyPerWeek() * (365.25 / 12 / 7) / 2
       : weeklyPerWeek() * (S.pay.period / 7);
   }
-  // What the bills bucket genuinely needs each check.
   function autoBills() {
     return Math.ceil((monthlyFixed() / 2 + weeklyPerCheck()) / 10) * 10;
+  }
+
+  /* ── paychecks actually received ───────────────────────── */
+
+  // A logged deposit inside this pay window beats the expected figure, so the
+  // plan reflects what really landed.
+  function loggedFor(payDay, nextDay) {
+    var best = null;
+    for (var i = 0; i < S.paychecks.length; i++) {
+      var p = S.paychecks[i];
+      var d = dayNum(parseISO(p.date));
+      if (d >= payDay && d < nextDay && (!best || d >= best.day)) {
+        best = { day: d, amount: num(p.amount), id: p.id, note: p.note || '' };
+      }
+    }
+    return best;
+  }
+
+  function recentAverage(n) {
+    var list = S.paychecks.slice().sort(function (a, b) {
+      return dayNum(parseISO(b.date)) - dayNum(parseISO(a.date));
+    }).slice(0, n || 3);
+    if (!list.length) return null;
+    var t = list.reduce(function (s, p) { return s + num(p.amount); }, 0);
+    return t / list.length;
   }
 
   /* ── the plan for one paycheck ─────────────────────────── */
@@ -196,16 +224,41 @@
     var totalDue = fixedDue + gasDue;
     var bonus = hits.length === 0;
 
+    var actual = loggedFor(payDay, nextDay);
+    var amount = actual ? actual.amount : num(S.pay.perCheck);
+
+    // Bills are an obligation, not a share — they do not shrink when a check
+    // does. Everything downstream absorbs the difference.
     var setAside = bonus ? Math.ceil(gasDue / 10) * 10 : num(S.split.bills);
-    var savings = num(S.split.savings) + (bonus ? Math.max(0, num(S.split.bills) - setAside) : 0);
-    var buffer = num(S.split.buffer);
-    var spend = num(S.pay.perCheck) - setAside - savings - buffer;
+    setAside = Math.min(setAside, amount);
+
+    var freed = bonus ? Math.max(0, num(S.split.bills) - setAside) : 0;
+    var left = Math.max(0, amount - setAside);
+
+    var savings, buffer;
+    if (S.split.mode === 'scaled') {
+      savings = amount * num(S.split.savingsPct) / 100;
+      buffer  = amount * num(S.split.bufferPct) / 100;
+    } else {
+      savings = num(S.split.savings);
+      buffer  = num(S.split.buffer);
+    }
+    // never promise more than the check holds
+    if (savings + buffer > left) {
+      var scale = left / (savings + buffer || 1);
+      savings *= scale;
+      buffer  *= scale;
+    }
+    savings += freed;
+
+    var spend = amount - setAside - savings - buffer;
 
     return {
       payDay: payDay, nextDay: nextDay, span: span,
       hits: hits, fixedDue: fixedDue, gasDue: gasDue, totalDue: totalDue,
-      bonus: bonus, setAside: setAside, savings: savings,
-      buffer: buffer, spend: spend,
+      bonus: bonus, amount: amount, actual: actual,
+      expected: num(S.pay.perCheck),
+      setAside: setAside, savings: savings, buffer: buffer, spend: spend,
       short: totalDue - setAside
     };
   }
@@ -239,20 +292,35 @@
 
     $('#countdown').innerHTML = untilNext <= 0
       ? '<b>Payday today</b>'
-      : '<b>' + untilNext + '</b> day' + (untilNext === 1 ? '' : 's') + ' until the next check';
+      : '<b>' + untilNext + '</b> day' + (untilNext === 1 ? '' : 's') + ' to the next check';
+
+    // the paid-state strip
+    var diff = p.actual ? p.actual.amount - p.expected : 0;
+    $('#paidState').innerHTML = p.actual
+      ? '<div class="paid-in"><span class="paid-k">Logged this check</span>'
+        + '<span class="paid-v">' + money(p.actual.amount, true) + '</span>'
+        + '<span class="paid-d">' + fmtDay(p.actual.day)
+        + (Math.abs(diff) >= 0.5
+            ? ' · <em class="' + (diff > 0 ? 'good' : 'warn') + '">'
+              + (diff > 0 ? '+' : '') + money(diff, true) + ' vs usual</em>'
+            : '')
+        + '</span></div>'
+      : '<div class="paid-in"><span class="paid-k">Using your usual</span>'
+        + '<span class="paid-v">' + money(p.expected) + '</span>'
+        + '<span class="paid-d">log what actually landed to true this up</span></div>';
+    $('#paidBtn').textContent = p.actual ? 'Edit this paycheck' : 'I got paid';
 
     $('#heroSpend').textContent = money(p.spend);
     $('#heroNote').textContent =
       money(p.spend / (p.span / 7)) + ' a week for the next ' + p.span + ' days'
-      + (p.bonus ? ' — and this is a bonus check, so the extra went to savings.' : '');
+      + (p.bonus ? ' — a bonus check, so the bills share went to savings.' : '');
 
-    // stacked allocation bar
-    var total = num(S.pay.perCheck) || 1;
+    var total = p.amount || 1;
     var segs = [
       { k: 'Bills',   v: p.setAside, c: 'var(--blue)'   },
       { k: 'Savings', v: p.savings,  c: 'var(--accent)' },
       { k: 'Buffer',  v: p.buffer,   c: 'var(--violet)' },
-      { k: 'Spend',   v: p.spend,    c: 'var(--cerise)'  }
+      { k: 'Spend',   v: p.spend,    c: 'var(--cerise)' }
     ];
     $('#heroBar').innerHTML = segs.map(function (s) {
       return '<span style="width:' + Math.max(0, (s.v / total) * 100) + '%;background:' + s.c + '"></span>';
@@ -261,16 +329,14 @@
       return '<span><i style="background:' + s.c + '"></i>' + s.k + ' <b>' + money(s.v) + '</b></span>';
     }).join('');
 
-    // bucket cards
-    var need = autoBills();
+    var pctNote = S.split.mode === 'scaled' ? ' · ' + S.split.savingsPct + '% of the check' : '';
     $('#buckets').innerHTML = [
-      card('Bills', money(p.setAside), 'covers ' + money(p.totalDue, true) + ' due this window', 'var(--blue)'),
-      card('Savings', money(p.savings), p.bonus ? 'bonus check boost' : 'straight to the fund', 'var(--accent)'),
+      card('Bills', money(p.setAside), 'covers ' + money(p.totalDue, true) + ' due now', 'var(--blue)'),
+      card('Savings', money(p.savings), (p.bonus ? 'bonus boost' : 'to the fund') + pctNote, 'var(--accent)'),
       card('Buffer', money(p.buffer), 'car, repairs, gifts', 'var(--violet)'),
       card('Spend', money(p.spend), money(p.spend / (p.span / 7)) + ' a week', 'var(--cerise)')
     ].join('');
 
-    // what's due
     var rows = p.hits.map(function (h) {
       var onPayday = h.day === p.nextDay;
       return '<div class="li">'
@@ -294,25 +360,46 @@
     var v;
     if (p.short > 0.5) {
       v = '<span class="bad">Short by ' + money(p.short, true) + '.</span> '
-        + 'Put ' + money(Math.ceil((p.totalDue) / 10) * 10) + ' aside from this check instead of '
+        + 'Set aside ' + money(Math.ceil(p.totalDue / 10) * 10) + ' from this check instead of '
         + money(p.setAside) + ', and take it out of spending this once.';
     } else if (p.short > -20) {
-      v = '<span class="warn">Just barely covered</span> — ' + money(-p.short, true) + ' to spare.';
+      v = '<span class="warn">Only just covered</span> — ' + money(-p.short, true) + ' to spare.';
     } else {
-      v = '<span class="good">Covered</span>, with ' + money(-p.short, true) + ' left over to build a cushion.';
+      v = '<span class="good">Covered</span>, with ' + money(-p.short, true) + ' spare to build a cushion.';
     }
+    var need = autoBills();
     if (need > num(S.split.bills)) {
-      v += '<br>Your bills average ' + money(need) + ' a check but you\'re setting aside '
-         + money(S.split.bills) + '. Consider raising it in Setup.';
+      v += '<br>Your bills average ' + money(need) + ' a check but you set aside '
+         + money(S.split.bills) + '. Raise it in Setup.';
     }
     $('#dueVerdict').innerHTML = v;
 
-    // pace
+    var wk = p.spend / (p.span / 7);
+    var groc = Math.min(110, wk * 0.45);
     $('#pace').innerHTML =
-        paceRow('Every week', money(p.spend / (p.span / 7)))
-      + '<hr>' + paceRow('Every day', money(p.spend / p.span, true))
-      + '<hr>' + paceRow('Groceries (suggested)', money(Math.min(110, p.spend / (p.span / 7) * 0.45)) + '/wk')
-      + '<hr>' + paceRow('Left for everything else', money(Math.max(0, p.spend / (p.span / 7) - Math.min(110, p.spend / (p.span / 7) * 0.45))) + '/wk');
+        paceRow('Every week', money(wk))
+      + paceRow('Every day', money(p.spend / p.span, true))
+      + paceRow('Groceries (suggested)', money(groc) + '/wk')
+      + paceRow('Everything else', money(Math.max(0, wk - groc)) + '/wk');
+
+    // recent paychecks
+    var log = S.paychecks.slice().sort(function (a, b) {
+      return dayNum(parseISO(b.date)) - dayNum(parseISO(a.date));
+    });
+    $('#payLog').innerHTML = log.length ? log.slice(0, 6).map(function (e) {
+      var d = num(e.amount) - num(S.pay.perCheck);
+      return '<div class="li">'
+        + '<span class="dot" style="background:var(--accent)"></span>'
+        + '<span class="nm">' + fmtDay(dayNum(parseISO(e.date)), true) + '</span>'
+        + '<span class="dt ' + (d >= 0 ? 'good' : 'warn') + '">'
+        + (Math.abs(d) < 0.5 ? 'as usual' : (d > 0 ? '+' : '') + money(d, true)) + '</span>'
+        + '<span class="am">' + money(e.amount, true) + '</span>'
+        + '<button class="rowbtn" data-del-pay="' + e.id + '">×</button>'
+        + '</div>';
+    }).join('') : '<div class="empty">Nothing logged yet. Tap “I got paid” when your money lands.</div>';
+
+    var avg = recentAverage(3);
+    $('#payAvg').textContent = avg ? 'Last ' + Math.min(3, S.paychecks.length) + ' averaged ' + money(avg, true) : '';
   }
 
   function card(k, v, d, c) {
@@ -328,12 +415,11 @@
   function renderBills() {
     var mf = monthlyFixed();
     var wm = weeklyPerWeek() * 52 / 12;
-    var tot = mf + wm;
 
     $('#billStats').innerHTML = [
       card('Fixed monthly', money(mf, true), S.bills.length + ' bills', 'var(--blue)'),
       card('Weekly, monthly', money(wm), money(weeklyPerWeek()) + ' a week', 'var(--teal)'),
-      card('Total a month', money(tot), 'everything that must go out', 'var(--violet)'),
+      card('Total a month', money(mf + wm), 'everything that must go out', 'var(--violet)'),
       card('Needs per check', money(autoBills()), 'you set aside ' + money(S.split.bills), 'var(--cerise)')
     ].join('');
 
@@ -376,11 +462,12 @@
     for (var i = 0; i < ps.length - 1; i++) {
       var p = planFor(ps[i], ps[i + 1]);
       if (p.bonus) bonuses.push(fmtDay(ps[i], true));
-      var cls = p.short > 0.5 ? 'tight' : 'ok';
       rows.push('<tr' + (p.bonus ? ' class="bonus"' : '') + '>'
-        + '<td>' + fmtDay(ps[i], true) + (p.bonus ? ' <span class="pill">bonus</span>' : '') + '</td>'
-        + '<td>' + fmtDay(p.nextDay) + '</td>'
-        + '<td class="num ' + cls + '">' + money(p.totalDue, true) + '</td>'
+        + '<td>' + fmtDay(ps[i], true)
+          + (p.bonus ? ' <span class="pill">bonus</span>' : '')
+          + (p.actual ? ' <span class="pill logged">logged</span>' : '') + '</td>'
+        + '<td class="num">' + money(p.amount) + '</td>'
+        + '<td class="num ' + (p.short > 0.5 ? 'tight' : 'ok') + '">' + money(p.totalDue, true) + '</td>'
         + '<td class="num">' + money(p.setAside) + '</td>'
         + '<td class="num' + (p.bonus ? ' ok' : '') + '">' + money(p.savings) + '</td>'
         + '<td class="num">' + money(p.spend) + '</td>'
@@ -402,29 +489,34 @@
 
     $('#goalNow').textContent = money(bal, true);
     $('#goalTarget').textContent = money(goal);
-    $('#goalFill').style.width = pct + '%';
+    $('#ringPct').textContent = Math.round(pct) + '%';
+
+    var C = 2 * Math.PI * 52;                     // r=52 in the SVG
+    var fill = $('#ringFill');
+    fill.setAttribute('stroke-dasharray', C.toFixed(2));
+    fill.setAttribute('stroke-dashoffset', (C * (1 - pct / 100)).toFixed(2));
+
     $('#goalMeta').innerHTML = bal >= goal
       ? '<span class="good">Funded.</span> Time to point this at the next thing.'
-      : money(goal - bal, true) + ' to go · ' + pct.toFixed(0) + '% there';
+      : money(goal - bal, true) + ' to go';
 
-    // walk forward until the goal is met
     var ps = paydays(today(), 80);
     var run = bal, hit = null, perYear = 0, n = 0;
+    var perYearChecks = checksPerYear();
     for (var i = 0; i < ps.length - 1; i++) {
       var p = planFor(ps[i], ps[i + 1]);
       run += p.savings;
       n++;
-      if (i < Math.round(365.25 / S.pay.period)) perYear += p.savings;
+      if (i < perYearChecks) perYear += p.savings;
       if (hit === null && run >= goal) hit = { day: ps[i], checks: n };
     }
 
     $('#projection').innerHTML =
-        projRow('Saved per normal check', money(S.split.savings))
+        projRow('Saved this check', money(planFor(ps[0], ps[1]).savings))
       + projRow('Saved in a year', money(perYear))
-      + projRow('Buffer built in a year', money(num(S.split.buffer) * Math.round(365.25 / S.pay.period)))
-      + (hit
-          ? projRow('Goal reached', fmtDay(hit.day, true) + ' · ' + hit.checks + ' checks')
-          : projRow('Goal reached', 'not within 3 years'));
+      + projRow('Buffer in a year', money(num(S.split.buffer) * perYearChecks))
+      + (hit ? projRow('Goal reached', fmtDay(hit.day, true))
+             : projRow('Goal reached', 'not within 3 years'));
 
     var log = (S.savings.log || []).slice().reverse();
     $('#depCount').textContent = log.length + ' entries';
@@ -450,10 +542,23 @@
     $('#setAnchor').value  = S.pay.anchor;
     $('#setPeriod').value  = String(S.pay.period);
     $('#setBills').value   = S.split.bills;
-    $('#setSavings').value = S.split.savings;
-    $('#setBuffer').value  = S.split.buffer;
     $('#setGoal').value    = S.savings.goal;
-    $('#backup').value     = JSON.stringify(S, null, 1);
+
+    var scaled = S.split.mode === 'scaled';
+    $('#modeToggle').classList.toggle('on', scaled);
+    $('#modeToggle').setAttribute('aria-checked', scaled ? 'true' : 'false');
+    $('#modeLabel').textContent = scaled
+      ? 'Savings and buffer move with your pay'
+      : 'Savings and buffer are fixed amounts';
+
+    $('#scaledFields').hidden = !scaled;
+    $('#fixedFields').hidden = scaled;
+    $('#setSavingsPct').value = S.split.savingsPct;
+    $('#setBufferPct').value  = S.split.bufferPct;
+    $('#setSavings').value    = S.split.savings;
+    $('#setBuffer').value     = S.split.buffer;
+
+    $('#backup').value = JSON.stringify(S, null, 1);
   }
 
   /* ── editor sheet ──────────────────────────────────────── */
@@ -512,7 +617,50 @@
     save(); renderAll();
   });
 
-  // bills
+  /* — the payday button — */
+
+  $('#paidBtn').addEventListener('click', function () {
+    var ps = paydays(today(), 2);
+    var p = planFor(ps[0], ps[1]);
+    var existing = p.actual;
+
+    openSheet(existing ? 'Edit this paycheck' : 'What landed in your account?', [
+      { key: 'amount', label: 'Amount deposited', type: 'number',
+        value: existing ? existing.amount : S.pay.perCheck },
+      { key: 'date', label: 'Date it hit', type: 'date',
+        value: existing ? toISO(fromDay(existing.day)) : toISO(fromDay(ps[0])) },
+      { key: 'usual', label: 'Treat this as your new usual?', type: 'select',
+        value: 'no',
+        options: [{ v: 'no', l: 'No — just this check' },
+                  { v: 'yes', l: 'Yes — update my usual amount' }] },
+      existing ? { key: 'del', label: 'Type DELETE to remove this entry', value: '' } : null
+    ].filter(Boolean), function (v) {
+      if (v.del && v.del.trim().toUpperCase() === 'DELETE') {
+        S.paychecks = S.paychecks.filter(function (x) { return x.id !== existing.id; });
+        save(); renderAll(); return toast('Entry removed');
+      }
+      var amt = num(v.amount);
+      if (amt <= 0) return toast('Enter what you were paid');
+
+      if (existing) {
+        S.paychecks.forEach(function (x) {
+          if (x.id === existing.id) { x.amount = amt; x.date = v.date; }
+        });
+      } else {
+        S.paychecks.push({ id: uid(), amount: amt, date: v.date || toISO(new Date()), note: '' });
+      }
+      // Realign the whole schedule to the day you were actually paid.
+      if (v.date) S.pay.anchor = v.date;
+      if (v.usual === 'yes') S.pay.perCheck = amt;
+
+      save(); renderAll();
+      var np = planFor.apply(null, paydays(today(), 2).slice(0, 2));
+      toast('Logged ' + money(amt, true) + ' · ' + money(np.spend) + ' to spend');
+    });
+  });
+
+  /* — bills — */
+
   $('#addBill').addEventListener('click', function () {
     openSheet('Add a bill', [
       { key: 'name', label: 'Name', value: '' },
@@ -542,7 +690,8 @@
   });
 
   document.addEventListener('click', function (e) {
-    var el = e.target.closest ? e.target.closest('[data-edit-bill],[data-edit-weekly],[data-del-dep]') : null;
+    var el = e.target.closest
+      ? e.target.closest('[data-edit-bill],[data-edit-weekly],[data-del-dep],[data-del-pay]') : null;
     if (!el) return;
 
     var bid = el.getAttribute('data-edit-bill');
@@ -587,6 +736,12 @@
       return;
     }
 
+    var pid = el.getAttribute('data-del-pay');
+    if (pid) {
+      S.paychecks = S.paychecks.filter(function (x) { return x.id !== pid; });
+      save(); renderAll(); return toast('Paycheck removed');
+    }
+
     var di = el.getAttribute('data-del-dep');
     if (di !== null) {
       var idx = parseInt(di, 10);
@@ -599,10 +754,12 @@
     }
   });
 
-  // savings
+  /* — savings — */
+
   $('#addDeposit').addEventListener('click', function () {
+    var ps = paydays(today(), 2);
     openSheet('Log a deposit', [
-      { key: 'amount', label: 'Amount', type: 'number', value: S.split.savings },
+      { key: 'amount', label: 'Amount', type: 'number', value: Math.round(planFor(ps[0], ps[1]).savings) },
       { key: 'date', label: 'Date', type: 'date', value: toISO(new Date()) },
       { key: 'note', label: 'Note (optional)', value: '' }
     ], function (v) {
@@ -614,15 +771,18 @@
     });
   });
 
-  // setup
+  /* — setup — */
+
   function bindNum(sel, apply) {
     $(sel).addEventListener('change', function () { apply(num(this.value)); save(); renderAll(); });
   }
-  bindNum('#setIncome',  function (v) { S.pay.perCheck = v; });
-  bindNum('#setBills',   function (v) { S.split.bills = v; });
-  bindNum('#setSavings', function (v) { S.split.savings = v; });
-  bindNum('#setBuffer',  function (v) { S.split.buffer = v; });
-  bindNum('#setGoal',    function (v) { S.savings.goal = v; });
+  bindNum('#setIncome',     function (v) { S.pay.perCheck = v; });
+  bindNum('#setBills',      function (v) { S.split.bills = v; });
+  bindNum('#setSavings',    function (v) { S.split.savings = v; });
+  bindNum('#setBuffer',     function (v) { S.split.buffer = v; });
+  bindNum('#setSavingsPct', function (v) { S.split.savingsPct = Math.max(0, Math.min(100, v)); });
+  bindNum('#setBufferPct',  function (v) { S.split.bufferPct = Math.max(0, Math.min(100, v)); });
+  bindNum('#setGoal',       function (v) { S.savings.goal = v; });
 
   $('#setAnchor').addEventListener('change', function () {
     if (this.value) { S.pay.anchor = this.value; save(); renderAll(); }
@@ -635,8 +795,14 @@
     S.split.bills = autoBills(); save(); renderAll();
     toast('Bills set to ' + money(S.split.bills));
   });
+  $('#modeToggle').addEventListener('click', function () {
+    S.split.mode = S.split.mode === 'scaled' ? 'fixed' : 'scaled';
+    save(); renderAll();
+    toast(S.split.mode === 'scaled' ? 'Buckets follow your pay' : 'Buckets are fixed');
+  });
 
-  // backup
+  /* — backup — */
+
   $('#copyBackup').addEventListener('click', function () {
     var ta = $('#backup');
     ta.focus(); ta.select();
@@ -660,7 +826,8 @@
     });
   });
 
-  // sheet
+  /* — sheet — */
+
   $('#sheetCancel').addEventListener('click', closeSheet);
   $('#sheetSave').addEventListener('click', function () {
     var fn = sheetSave;
@@ -668,7 +835,7 @@
   });
   $('#scrim').addEventListener('click', function (e) { if (e.target === this) closeSheet(); });
 
-  // keep "days until payday" honest if the tablet sits open overnight
+  // keep "days to payday" honest if the tablet sits open overnight
   var lastDay = today();
   setInterval(function () {
     var t = today();

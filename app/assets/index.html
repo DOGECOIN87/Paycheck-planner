@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -18,13 +18,13 @@
         <span>Planner</span>
       </div>
     </div>
-    <button class="nav-item is-active" data-view="check"><span class="ni">◆</span>This check</button>
-    <button class="nav-item" data-view="bills"><span class="ni">▤</span>Bills</button>
-    <button class="nav-item" data-view="schedule"><span class="ni">▦</span>Schedule</button>
-    <button class="nav-item" data-view="savings"><span class="ni">▲</span>Savings</button>
-    <button class="nav-item" data-view="settings"><span class="ni">✷</span>Setup</button>
+    <button class="nav-item is-active" data-view="check"><span class="ni">◉</span><span class="nt">This check</span></button>
+    <button class="nav-item" data-view="bills"><span class="ni">▤</span><span class="nt">Bills</span></button>
+    <button class="nav-item" data-view="schedule"><span class="ni">▦</span><span class="nt">Schedule</span></button>
+    <button class="nav-item" data-view="savings"><span class="ni">◎</span><span class="nt">Savings</span></button>
+    <button class="nav-item" data-view="settings"><span class="ni">✷</span><span class="nt">Setup</span></button>
     <div class="nav-foot">
-      <button class="ghost sm" id="themeBtn">Light mode</button>
+      <button class="soft sm" id="themeBtn">Dark mode</button>
     </div>
   </nav>
 
@@ -40,12 +40,23 @@
         <div class="countdown" id="countdown"></div>
       </header>
 
+      <!-- hero: the one number that matters, and the one button that matters -->
       <div class="hero">
-        <div class="hero-label">Safe to spend</div>
-        <div class="hero-value" id="heroSpend">$0</div>
-        <div class="hero-note" id="heroNote">—</div>
-        <div class="hero-bar" id="heroBar"></div>
-        <div class="hero-legend" id="heroLegend"></div>
+        <div class="hero-main">
+          <div class="hero-label">Safe to spend</div>
+          <div class="hero-value" id="heroSpend">$0</div>
+          <div class="hero-note" id="heroNote">—</div>
+        </div>
+
+        <div class="hero-side">
+          <div class="paid" id="paidState"></div>
+          <button class="btn big" id="paidBtn">I got paid</button>
+        </div>
+
+        <div class="hero-foot">
+          <div class="hero-bar" id="heroBar"></div>
+          <div class="hero-legend" id="heroLegend"></div>
+        </div>
       </div>
 
       <div class="grid cards" id="buckets"></div>
@@ -65,6 +76,14 @@
           <div id="pace" class="pace"></div>
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h2>Paychecks you've logged</h2>
+          <span class="pill" id="payAvg"></span>
+        </div>
+        <div id="payLog" class="list"></div>
+      </div>
     </section>
 
     <!-- ══════════════ BILLS ══════════════ -->
@@ -82,7 +101,7 @@
       <div class="card">
         <div class="card-h"><h2>Monthly bills</h2><span class="pill" id="billCount"></span></div>
         <div class="table-wrap">
-          <table class="tbl" id="billTable">
+          <table class="tbl">
             <thead>
               <tr><th>Bill</th><th class="num">Amount</th><th class="num">Due</th><th class="num">Per check</th><th></th></tr>
             </thead>
@@ -92,9 +111,9 @@
       </div>
 
       <div class="card">
-        <div class="card-h"><h2>Recurring by the week</h2><button class="ghost sm" id="addWeekly">+ Add</button></div>
+        <div class="card-h"><h2>Every week</h2><button class="soft sm" id="addWeekly">+ Add</button></div>
         <div class="table-wrap">
-          <table class="tbl" id="weeklyTable">
+          <table class="tbl">
             <thead>
               <tr><th>Item</th><th class="num">Per week</th><th class="num">Per month</th><th class="num">Per check</th><th></th></tr>
             </thead>
@@ -114,9 +133,12 @@
       </header>
       <div class="card">
         <div class="table-wrap">
-          <table class="tbl" id="schedTable">
+          <table class="tbl">
             <thead>
-              <tr><th>Payday</th><th>Covers until</th><th class="num">Bills due</th><th class="num">Set aside</th><th class="num">To savings</th><th class="num">Left to spend</th></tr>
+              <tr>
+                <th>Payday</th><th class="num">Check</th><th class="num">Bills due</th>
+                <th class="num">Set aside</th><th class="num">Savings</th><th class="num">To spend</th>
+              </tr>
             </thead>
             <tbody id="schedBody"></tbody>
           </table>
@@ -136,15 +158,25 @@
       </header>
 
       <div class="grid two">
-        <div class="card">
-          <div class="card-h"><h2>Emergency fund</h2></div>
-          <div class="goal">
+        <div class="card ring-card">
+          <div class="ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-track" cx="60" cy="60" r="52"></circle>
+              <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52"
+                      transform="rotate(-90 60 60)"></circle>
+            </svg>
+            <div class="ring-mid">
+              <b id="ringPct">0%</b>
+              <span>funded</span>
+            </div>
+          </div>
+          <div class="ring-side">
             <div class="goal-now" id="goalNow">$0</div>
-            <div class="goal-of">of <span id="goalTarget">$0</span></div>
-            <div class="track"><div class="track-fill" id="goalFill"></div></div>
+            <div class="goal-of">of <span id="goalTarget">$0</span> emergency fund</div>
             <div class="goal-meta" id="goalMeta"></div>
           </div>
         </div>
+
         <div class="card">
           <div class="card-h"><h2>On this plan</h2></div>
           <div id="projection" class="proj"></div>
@@ -171,11 +203,11 @@
           <div class="card-h"><h2>Pay</h2></div>
           <div class="fields">
             <label class="fld">
-              <span>Take-home per check</span>
+              <span>Your usual take-home per check</span>
               <input type="number" inputmode="decimal" step="0.01" id="setIncome">
             </label>
             <label class="fld">
-              <span>A payday you know</span>
+              <span>Most recent payday</span>
               <input type="date" id="setAnchor">
             </label>
             <label class="fld">
@@ -191,22 +223,51 @@
 
         <div class="card">
           <div class="card-h"><h2>The split</h2></div>
+
+          <div class="switch-row">
+            <button class="switch" id="modeToggle" role="switch" aria-checked="true">
+              <span class="knob"></span>
+            </button>
+            <span class="switch-label" id="modeLabel">—</span>
+          </div>
+
           <div class="fields">
             <label class="fld">
-              <span>Bills set-aside per check</span>
+              <span>Bills set aside per check</span>
               <div class="withaux">
                 <input type="number" inputmode="decimal" step="1" id="setBills">
-                <button class="ghost sm" id="autoBills" title="Match it to what your bills actually cost">Auto</button>
+                <button class="soft sm" id="autoBills" title="Match what your bills actually cost">Auto</button>
               </div>
             </label>
-            <label class="fld">
-              <span>Savings per check</span>
-              <input type="number" inputmode="decimal" step="1" id="setSavings">
-            </label>
-            <label class="fld">
-              <span>Buffer per check <em>(car, repairs, gifts)</em></span>
-              <input type="number" inputmode="decimal" step="1" id="setBuffer">
-            </label>
+
+            <div id="scaledFields" class="fields">
+              <label class="fld">
+                <span>Savings <em>— share of each check</em></span>
+                <div class="withaux">
+                  <input type="number" inputmode="decimal" step="1" id="setSavingsPct">
+                  <span class="unit">%</span>
+                </div>
+              </label>
+              <label class="fld">
+                <span>Buffer <em>— share of each check</em></span>
+                <div class="withaux">
+                  <input type="number" inputmode="decimal" step="1" id="setBufferPct">
+                  <span class="unit">%</span>
+                </div>
+              </label>
+            </div>
+
+            <div id="fixedFields" class="fields" hidden>
+              <label class="fld">
+                <span>Savings per check</span>
+                <input type="number" inputmode="decimal" step="1" id="setSavings">
+              </label>
+              <label class="fld">
+                <span>Buffer per check <em>(car, repairs, gifts)</em></span>
+                <input type="number" inputmode="decimal" step="1" id="setBuffer">
+              </label>
+            </div>
+
             <label class="fld">
               <span>Emergency fund goal</span>
               <input type="number" inputmode="decimal" step="1" id="setGoal">
@@ -220,9 +281,9 @@
         <p class="muted sm-p">Everything lives on this tablet only. Copy this text somewhere safe, and paste it back to restore.</p>
         <textarea id="backup" class="backup" spellcheck="false"></textarea>
         <div class="row-btns">
-          <button class="ghost" id="copyBackup">Copy</button>
-          <button class="ghost" id="restoreBackup">Restore from box</button>
-          <button class="ghost danger" id="resetAll">Reset everything</button>
+          <button class="soft" id="copyBackup">Copy</button>
+          <button class="soft" id="restoreBackup">Restore from box</button>
+          <button class="soft danger" id="resetAll">Reset everything</button>
         </div>
       </div>
     </section>
@@ -236,7 +297,7 @@
     <h3 id="sheetTitle">Edit</h3>
     <div class="fields" id="sheetFields"></div>
     <div class="row-btns end">
-      <button class="ghost" id="sheetCancel">Cancel</button>
+      <button class="soft" id="sheetCancel">Cancel</button>
       <button class="btn" id="sheetSave">Save</button>
     </div>
   </div>
