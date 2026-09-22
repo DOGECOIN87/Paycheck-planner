@@ -17,7 +17,7 @@
         { id: 'b1', name: 'Rent',            amount: 150.99, dueDay: 1,  color: 'accent' },
         { id: 'b2', name: 'Car insurance',   amount: 124.99, dueDay: 5,  color: 'blue'   },
         { id: 'b3', name: 'AT&T',            amount: 146.99, dueDay: 8,  color: 'violet' },
-        { id: 'b4', name: 'Planet Fitness',  amount:  27.11, dueDay: 17, color: 'amber'  }
+        { id: 'b4', name: 'Planet Fitness',  amount:  27.11, dueDay: 17, color: 'cerise'  }
       ],
       weekly: [
         { id: 'w1', name: 'Gas', amount: 40 }
@@ -213,7 +213,7 @@
   /* ── rendering ─────────────────────────────────────────── */
 
   var COLORS = { accent: 'var(--accent)', blue: 'var(--blue)', violet: 'var(--violet)',
-                 amber: 'var(--amber)', teal: 'var(--teal)', red: 'var(--red)' };
+                 cerise: 'var(--cerise)', teal: 'var(--teal)', red: 'var(--red)' };
   function colorOf(c) { return COLORS[c] || 'var(--teal)'; }
 
   function renderAll() {
@@ -252,7 +252,7 @@
       { k: 'Bills',   v: p.setAside, c: 'var(--blue)'   },
       { k: 'Savings', v: p.savings,  c: 'var(--accent)' },
       { k: 'Buffer',  v: p.buffer,   c: 'var(--violet)' },
-      { k: 'Spend',   v: p.spend,    c: 'var(--amber)'  }
+      { k: 'Spend',   v: p.spend,    c: 'var(--cerise)'  }
     ];
     $('#heroBar').innerHTML = segs.map(function (s) {
       return '<span style="width:' + Math.max(0, (s.v / total) * 100) + '%;background:' + s.c + '"></span>';
@@ -267,7 +267,7 @@
       card('Bills', money(p.setAside), 'covers ' + money(p.totalDue, true) + ' due this window', 'var(--blue)'),
       card('Savings', money(p.savings), p.bonus ? 'bonus check boost' : 'straight to the fund', 'var(--accent)'),
       card('Buffer', money(p.buffer), 'car, repairs, gifts', 'var(--violet)'),
-      card('Spend', money(p.spend), money(p.spend / (p.span / 7)) + ' a week', 'var(--amber)')
+      card('Spend', money(p.spend), money(p.spend / (p.span / 7)) + ' a week', 'var(--cerise)')
     ].join('');
 
     // what's due
@@ -334,7 +334,7 @@
       card('Fixed monthly', money(mf, true), S.bills.length + ' bills', 'var(--blue)'),
       card('Weekly, monthly', money(wm), money(weeklyPerWeek()) + ' a week', 'var(--teal)'),
       card('Total a month', money(tot), 'everything that must go out', 'var(--violet)'),
-      card('Needs per check', money(autoBills()), 'you set aside ' + money(S.split.bills), 'var(--amber)')
+      card('Needs per check', money(autoBills()), 'you set aside ' + money(S.split.bills), 'var(--cerise)')
     ].join('');
 
     $('#billCount').textContent = S.bills.length + ' bills · ' + money(mf, true) + '/mo';
@@ -520,7 +520,7 @@
       { key: 'dueDay', label: 'Day of the month it is due', type: 'number', step: '1', value: '1' }
     ], function (v) {
       if (!v.name.trim()) return toast('Give it a name');
-      var palette = ['accent', 'blue', 'violet', 'amber', 'teal', 'red'];
+      var palette = ['accent', 'blue', 'violet', 'cerise', 'teal', 'red'];
       S.bills.push({
         id: uid(), name: v.name.trim(), amount: num(v.amount),
         dueDay: Math.min(31, Math.max(1, Math.round(num(v.dueDay, 1)))),

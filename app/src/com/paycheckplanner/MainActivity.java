@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
 
         web.setWebViewClient(new WebViewClient());
         web.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        web.setBackgroundColor(0xFF0A0E13);
+        web.setBackgroundColor(0xFF070F34);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);

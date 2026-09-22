@@ -2,23 +2,26 @@
    Paycheck Planner — tablet-first, offline, dark by default.
    ───────────────────────────────────────────────────────────── */
 
-:root {
-  --bg:        #0A0E13;
-  --surface:   #131A23;
-  --surface-2: #1A2430;
-  --border:    #26313D;
-  --border-sy: #313E4C;
-  --text:      #E9EFF5;
-  --muted:     #90A4B8;
-  --faint:     #6B7F93;
+/* Palette: Oxford Blue 070F34 · Zaffre 0313A6 · Dark Violet 9201CB
+            Hollywood Cerise F715AB · Fluorescent Cyan 34EDF3          */
 
-  --accent:    #34D399;
-  --accent-dk: #10B981;
-  --teal:      #2DD4BF;
-  --amber:     #FBBF24;
-  --red:       #F87171;
-  --violet:    #A78BFA;
-  --blue:      #60A5FA;
+:root {
+  --bg:        #070F34;
+  --surface:   #0C1648;
+  --surface-2: #141F63;
+  --border:    #1E2B7A;
+  --border-sy: #2C3C9E;
+  --text:      #EAEFFF;
+  --muted:     #9DABE0;
+  --faint:     #7A88C4;
+
+  --accent:    #34EDF3;   /* fluorescent cyan — positive, savings, primary */
+  --accent-dk: #14C4D8;
+  --teal:      #14C4D8;
+  --cerise:    #F715AB;   /* hollywood cerise — spend, shortfalls */
+  --red:       #FF6AB8;
+  --violet:    #B23DEF;   /* dark violet, lifted for contrast on navy */
+  --blue:      #4258F5;   /* zaffre, lifted for contrast on navy */
 
   --r:    14px;
   --r-sm: 10px;
@@ -29,24 +32,24 @@
 }
 
 :root[data-theme="light"] {
-  --bg:        #F4F7FA;
+  --bg:        #F1F4FD;
   --surface:   #FFFFFF;
-  --surface-2: #EEF3F8;
-  --border:    #DCE4EC;
-  --border-sy: #C6D2DE;
-  --text:      #0F1B2A;
-  --muted:     #5C6E81;
-  --faint:     #7A8B9C;
+  --surface-2: #E9EDFA;
+  --border:    #D5DCF2;
+  --border-sy: #BCC6E8;
+  --text:      #070F34;
+  --muted:     #4C5788;
+  --faint:     #6E79A6;
 
-  --accent:    #059669;
-  --accent-dk: #047857;
-  --teal:      #0D9488;
-  --amber:     #B45309;
-  --red:       #DC2626;
-  --violet:    #7C3AED;
-  --blue:      #2563EB;
+  --accent:    #0C8DA4;   /* cyan darkened so it carries on white */
+  --accent-dk: #0A7387;
+  --teal:      #0C8DA4;
+  --cerise:    #C4127F;
+  --red:       #D6146F;
+  --violet:    #7A01AA;
+  --blue:      #0313A6;   /* zaffre reads cleanly on white */
 
-  --shadow: 0 1px 2px rgba(16,32,48,.06), 0 6px 20px rgba(16,32,48,.07);
+  --shadow: 0 1px 2px rgba(7,15,52,.07), 0 6px 20px rgba(7,15,52,.08);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -84,7 +87,7 @@ body { overflow: hidden; }
 
 .brand-mark {
   width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(160deg, var(--accent), var(--teal));
+  background: linear-gradient(160deg, var(--accent), var(--violet));
   display: flex; align-items: flex-end; justify-content: center;
   gap: 3px; padding-bottom: 9px;
 }
@@ -140,7 +143,7 @@ body { overflow: hidden; }
 }
 .hero::before {
   content: ""; position: absolute; inset: 0 auto 0 0; width: 4px;
-  background: linear-gradient(180deg, var(--accent), var(--teal));
+  background: linear-gradient(180deg, var(--accent), var(--violet));
 }
 .hero-label { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
 .hero-value {
@@ -236,7 +239,7 @@ body { overflow: hidden; }
 .goal-of { color: var(--muted); font-size: 14.5px; margin-top: 2px; }
 .goal-of span { font-family: var(--num); }
 .track { height: 12px; border-radius: 6px; background: var(--surface-2); overflow: hidden; margin: 18px 0 10px; }
-.track-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--teal)); transition: width .4s ease; }
+.track-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--cerise)); transition: width .4s ease; }
 .goal-meta { font-size: 14px; color: var(--muted); }
 
 .proj { display: flex; flex-direction: column; gap: 13px; font-size: 15px; }
@@ -267,7 +270,7 @@ select { background-image: none; }
 
 .btn {
   appearance: none; border: 0; cursor: pointer;
-  background: var(--accent); color: #05221A;
+  background: var(--accent); color: #051034;
   font: inherit; font-size: 15px; font-weight: 640;
   padding: 11px 19px; border-radius: var(--r-sm); white-space: nowrap;
 }
@@ -304,14 +307,14 @@ select { background-image: none; }
 }
 .note b { color: var(--text); font-weight: 620; }
 
-.warn { color: var(--amber); }
-.bad  { color: var(--red); }
+.warn { color: var(--red); }
+.bad  { color: var(--cerise); }
 .good { color: var(--accent); }
 
 /* ── sheet ─────────────────────────────────────────────── */
 
 .scrim {
-  position: fixed; inset: 0; background: rgba(4,8,12,.62);
+  position: fixed; inset: 0; background: rgba(3,7,26,.68);
   display: flex; align-items: center; justify-content: center;
   padding: 24px; z-index: 40;
 }

@@ -27,8 +27,8 @@ def rounded_rect(x, y, w, h, r, px, py):
 
 def render(size):
     n = size * SS
-    top = (0x34, 0xD3, 0x99)     # emerald
-    bot = (0x0D, 0x94, 0x88)     # teal
+    top = (0x34, 0xED, 0xF3)     # fluorescent cyan
+    bot = (0x92, 0x01, 0xCB)     # dark violet
     fg = (0xFF, 0xFF, 0xFF)
 
     radius = n * 0.235
