@@ -100,4 +100,14 @@ quiet apksigner sign \
 say "Verifying"
 quiet apksigner verify --min-sdk-version "$MIN_SDK" --verbose "$APK"
 
+# Split-APK installers (SAI, and anything else that reads .apks/.xapk) expect a
+# ZIP whose members are .apk files. A plain APK has none, so they reject it.
+# Ship a one-member bundle alongside the APK for people who install that way.
+say "Writing an .apks bundle for split-APK installers"
+BUNDLE_TMP=$OUT/bundle
+rm -rf "$BUNDLE_TMP" && mkdir -p "$BUNDLE_TMP"
+cp "$APK" "$BUNDLE_TMP/base.apk"
+rm -f "$DIST/paycheck-planner.apks"
+( cd "$BUNDLE_TMP" && zip -q -X "$DIST/paycheck-planner.apks" base.apk )
+
 printf '\n\033[1;32m==>\033[0m Built %s (%s)\n' "$APK" "$(du -h "$APK" | cut -f1)"
